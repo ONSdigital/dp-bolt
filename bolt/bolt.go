@@ -4,8 +4,9 @@ import (
 	"github.com/pkg/errors"
 	neo4j "github.com/johnnadratowski/golang-neo4j-bolt-driver"
 	"io"
-	"context"
 )
+
+//go:generate moq -out mock/bolt.go -pkg mock . DBPool NeoConn
 
 type Result struct {
 	Data  []interface{}
@@ -13,7 +14,9 @@ type Result struct {
 	Index int
 }
 
-type RowExtractorClosure func(r *Result) error
+type ResultExtractorClosure func(r *Result) error
+
+type NeoConn neo4j.Conn
 
 // DBPool contains the methods to control access to the Neo4J
 // database pool
@@ -37,16 +40,16 @@ func (d *DB) Close() error {
 }
 
 //QueryForResults executes the provided query to return 1 or more results.
-func (d *DB) QueryForResults(query string, params map[string]interface{}, resultExtractor RowExtractorClosure) error {
+func (d *DB) QueryForResults(query string, params map[string]interface{}, resultExtractor ResultExtractorClosure) error {
 	return d.query(query, params, resultExtractor, false)
 }
 
 //QueryForResults executes the provided query to return a single result.
-func (d *DB) QueryForResult(ctx context.Context, cypherQuery string, params map[string]interface{}, resultExtractor RowExtractorClosure) error {
-	return d.query(cypherQuery, params, resultExtractor, true)
+func (d *DB) QueryForResult(query string, params map[string]interface{}, resultExtractor ResultExtractorClosure) error {
+	return d.query(query, params, resultExtractor, true)
 }
 
-func (d *DB) query(cypherQuery string, params map[string]interface{}, resultExtractor RowExtractorClosure, singleResult bool) error {
+func (d *DB) query(cypherQuery string, params map[string]interface{}, resultExtractor ResultExtractorClosure, singleResult bool) error {
 	conn, err := d.pool.OpenPool()
 	if err != nil {
 		return errors.WithMessage(err, "error opening neo4j connection")
@@ -62,11 +65,10 @@ func (d *DB) query(cypherQuery string, params map[string]interface{}, resultExtr
 	if err := d.extractResults(rows, resultExtractor, singleResult); err != nil {
 		return errors.WithMessage(err, "error extracting row data")
 	}
-
 	return nil
 }
 
-func (d *DB) extractResults(rows neo4j.Rows, resultExtractor RowExtractorClosure, singleResult bool) error {
+func (d *DB) extractResults(rows neo4j.Rows, extractResult ResultExtractorClosure, singleResult bool) error {
 	index := 0
 	for {
 		data, meta, err := rows.NextNeo()
@@ -80,8 +82,8 @@ func (d *DB) extractResults(rows neo4j.Rows, resultExtractor RowExtractorClosure
 		if singleResult && index > 0 {
 			return errors.New("extractResults: expected single result but was not")
 		}
-		if err := resultExtractor(&Result{Data: data, Meta: meta, Index: index}); err != nil {
-			return errors.WithMessage(err, "extractResults: resultExtractor returned an error")
+		if err := extractResult(&Result{Data: data, Meta: meta, Index: index}); err != nil {
+			return errors.WithMessage(err, "extractResults: extractResult returned an error")
 		}
 		index++
 	}
