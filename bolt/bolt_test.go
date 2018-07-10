@@ -89,7 +89,7 @@ func TestDB_QueryForResult_QueryNeoError(t *testing.T) {
 	})
 }
 
-func mockResultExtractor(extractCalls []*Result, err error) ResultExtractorClosure {
+func mockResultExtractor(extractCalls []*Result, err error) ResultExtractor {
 	return func(r *Result) error {
 		extractCalls = append(extractCalls, r)
 		return err

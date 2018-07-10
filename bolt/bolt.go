@@ -14,7 +14,7 @@ type Result struct {
 	Index int
 }
 
-type ResultExtractorClosure func(r *Result) error
+type ResultExtractor func(r *Result) error
 
 type NeoConn neo4j.Conn
 
@@ -40,16 +40,16 @@ func (d *DB) Close() error {
 }
 
 //QueryForResults executes the provided query to return 1 or more results.
-func (d *DB) QueryForResults(query string, params map[string]interface{}, resultExtractor ResultExtractorClosure) error {
+func (d *DB) QueryForResults(query string, params map[string]interface{}, resultExtractor ResultExtractor) error {
 	return d.query(query, params, resultExtractor, false)
 }
 
 //QueryForResults executes the provided query to return a single result.
-func (d *DB) QueryForResult(query string, params map[string]interface{}, resultExtractor ResultExtractorClosure) error {
+func (d *DB) QueryForResult(query string, params map[string]interface{}, resultExtractor ResultExtractor) error {
 	return d.query(query, params, resultExtractor, true)
 }
 
-func (d *DB) query(cypherQuery string, params map[string]interface{}, extractResult ResultExtractorClosure, singleResult bool) error {
+func (d *DB) query(cypherQuery string, params map[string]interface{}, extractResult ResultExtractor, singleResult bool) error {
 	conn, err := d.pool.OpenPool()
 	if err != nil {
 		return errors.WithMessage(err, "error opening neo4j connection")
@@ -62,29 +62,23 @@ func (d *DB) query(cypherQuery string, params map[string]interface{}, extractRes
 	}
 	defer rows.Close()
 
-	err = func() error {
-		index := 0
-		for {
-			data, meta, err := rows.NextNeo()
-			if err != nil {
-				if err == io.EOF {
-					return nil
-				} else {
-					return errors.WithMessage(err, "extractResults: rows.NextNeo() return unexpected error")
-				}
+	index := 0
+	for {
+		data, meta, err := rows.NextNeo()
+		if err != nil {
+			if err == io.EOF {
+				return nil
+			} else {
+				return errors.WithMessage(err, "extractResults: rows.NextNeo() return unexpected error")
 			}
-			if singleResult && index > 0 {
-				return errors.New("extractResults: expected single result but was not")
-			}
-			if err := extractResult(&Result{Data: data, Meta: meta, Index: index}); err != nil {
-				return errors.WithMessage(err, "extractResults: extractResult returned an error")
-			}
-			index++
 		}
-	}()
-	if err != nil {
-		return errors.WithMessage(err, "error extracting row data")
+		if singleResult && index > 0 {
+			return errors.New("extractResults: expected single result but was not")
+		}
+		if err := extractResult(&Result{Data: data, Meta: meta, Index: index}); err != nil {
+			return errors.WithMessage(err, "extractResults: extractResult returned an error")
+		}
+		index++
 	}
-
 	return nil
 }
