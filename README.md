@@ -39,6 +39,13 @@ if err != nil {
 The final parameter of `db.QueryForResult()` is a `ResultExtractor` - a closure that enables you to customize how to 
 handle the row data returned by your query (the underlying library returns row data as `[]interface{}` the closure you provide should handle casting the data to the expected type, handling any casting error and assigning to a variable for later use.
 ```go
+type ResultExtractor func(r *Result) error
+```
+`Result` simply encapsulates the values returned by the underlying library - row `data`,`metadata` and `index` which 
+should provide everything you need to extract your response.  
+
+Full example:
+```go
 var count int64
 rowExtractor := func(r *bolt.Result) error {
     var ok bool
