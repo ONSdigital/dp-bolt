@@ -49,7 +49,7 @@ func (d *DB) QueryForResult(query string, params map[string]interface{}, resultE
 	return d.query(query, params, resultExtractor, true)
 }
 
-func (d *DB) query(cypherQuery string, params map[string]interface{}, resultExtractor ResultExtractorClosure, singleResult bool) error {
+func (d *DB) query(cypherQuery string, params map[string]interface{}, extractResult ResultExtractorClosure, singleResult bool) error {
 	conn, err := d.pool.OpenPool()
 	if err != nil {
 		return errors.WithMessage(err, "error opening neo4j connection")
@@ -62,30 +62,29 @@ func (d *DB) query(cypherQuery string, params map[string]interface{}, resultExtr
 	}
 	defer rows.Close()
 
-	if err := d.extractResults(rows, resultExtractor, singleResult); err != nil {
+	err = func() error {
+		index := 0
+		for {
+			data, meta, err := rows.NextNeo()
+			if err != nil {
+				if err == io.EOF {
+					return nil
+				} else {
+					return errors.WithMessage(err, "extractResults: rows.NextNeo() return unexpected error")
+				}
+			}
+			if singleResult && index > 0 {
+				return errors.New("extractResults: expected single result but was not")
+			}
+			if err := extractResult(&Result{Data: data, Meta: meta, Index: index}); err != nil {
+				return errors.WithMessage(err, "extractResults: extractResult returned an error")
+			}
+			index++
+		}
+	}()
+	if err != nil {
 		return errors.WithMessage(err, "error extracting row data")
 	}
-	return nil
-}
 
-func (d *DB) extractResults(rows neo4j.Rows, extractResult ResultExtractorClosure, singleResult bool) error {
-	index := 0
-	for {
-		data, meta, err := rows.NextNeo()
-		if err != nil {
-			if err == io.EOF {
-				return nil
-			} else {
-				return errors.WithMessage(err, "extractResults: rows.NextNeo() return unexpected error")
-			}
-		}
-		if singleResult && index > 0 {
-			return errors.New("extractResults: expected single result but was not")
-		}
-		if err := extractResult(&Result{Data: data, Meta: meta, Index: index}); err != nil {
-			return errors.WithMessage(err, "extractResults: extractResult returned an error")
-		}
-		index++
-	}
 	return nil
 }
