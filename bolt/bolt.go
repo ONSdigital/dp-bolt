@@ -6,7 +6,9 @@ import (
 	"io"
 )
 
-//go:generate moq -out mock/bolt.go -pkg mock . DBPool NeoConn
+//go:generate moq -out mock/bolt.go -pkg mock . DBPool NeoConn NeoRows
+
+var NonUniqueResult = errors.New("unique result expected but was not")
 
 type Result struct {
 	Data  []interface{}
@@ -17,6 +19,7 @@ type Result struct {
 type ResultExtractor func(r *Result) error
 
 type NeoConn neo4j.Conn
+type NeoRows neo4j.Rows
 
 // DBPool contains the methods to control access to the Neo4J
 // database pool
@@ -64,16 +67,16 @@ func (d *DB) query(cypherQuery string, params map[string]interface{}, extractRes
 
 	index := 0
 	for {
-		data, meta, err := rows.NextNeo()
-		if err != nil {
-			if err == io.EOF {
+		data, meta, nextNeoErr := rows.NextNeo()
+		if nextNeoErr != nil {
+			if nextNeoErr == io.EOF {
 				return nil
 			} else {
-				return errors.WithMessage(err, "extractResults: rows.NextNeo() return unexpected error")
+				return errors.WithMessage(nextNeoErr, "extractResults: rows.NextNeo() return unexpected error")
 			}
 		}
 		if singleResult && index > 0 {
-			return errors.New("extractResults: expected single result but was not")
+			return NonUniqueResult
 		}
 		if err := extractResult(&Result{Data: data, Meta: meta, Index: index}); err != nil {
 			return errors.WithMessage(err, "extractResults: extractResult returned an error")

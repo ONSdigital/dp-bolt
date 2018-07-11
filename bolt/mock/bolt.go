@@ -612,3 +612,204 @@ func (mock *NeoConnMock) SetTimeoutCalls() []struct {
 	lockNeoConnMockSetTimeout.RUnlock()
 	return calls
 }
+
+var (
+	lockNeoRowsMockAll      sync.RWMutex
+	lockNeoRowsMockClose    sync.RWMutex
+	lockNeoRowsMockColumns  sync.RWMutex
+	lockNeoRowsMockMetadata sync.RWMutex
+	lockNeoRowsMockNextNeo  sync.RWMutex
+)
+
+// NeoRowsMock is a mock implementation of NeoRows.
+//
+//     func TestSomethingThatUsesNeoRows(t *testing.T) {
+//
+//         // make and configure a mocked NeoRows
+//         mockedNeoRows := &NeoRowsMock{
+//             AllFunc: func() ([][]interface{}, map[string]interface{}, error) {
+// 	               panic("TODO: mock out the All method")
+//             },
+//             CloseFunc: func() error {
+// 	               panic("TODO: mock out the Close method")
+//             },
+//             ColumnsFunc: func() []string {
+// 	               panic("TODO: mock out the Columns method")
+//             },
+//             MetadataFunc: func() map[string]interface{} {
+// 	               panic("TODO: mock out the Metadata method")
+//             },
+//             NextNeoFunc: func() ([]interface{}, map[string]interface{}, error) {
+// 	               panic("TODO: mock out the NextNeo method")
+//             },
+//         }
+//
+//         // TODO: use mockedNeoRows in code that requires NeoRows
+//         //       and then make assertions.
+//
+//     }
+type NeoRowsMock struct {
+	// AllFunc mocks the All method.
+	AllFunc func() ([][]interface{}, map[string]interface{}, error)
+
+	// CloseFunc mocks the Close method.
+	CloseFunc func() error
+
+	// ColumnsFunc mocks the Columns method.
+	ColumnsFunc func() []string
+
+	// MetadataFunc mocks the Metadata method.
+	MetadataFunc func() map[string]interface{}
+
+	// NextNeoFunc mocks the NextNeo method.
+	NextNeoFunc func() ([]interface{}, map[string]interface{}, error)
+
+	// calls tracks calls to the methods.
+	calls struct {
+		// All holds details about calls to the All method.
+		All []struct {
+		}
+		// Close holds details about calls to the Close method.
+		Close []struct {
+		}
+		// Columns holds details about calls to the Columns method.
+		Columns []struct {
+		}
+		// Metadata holds details about calls to the Metadata method.
+		Metadata []struct {
+		}
+		// NextNeo holds details about calls to the NextNeo method.
+		NextNeo []struct {
+		}
+	}
+}
+
+// All calls AllFunc.
+func (mock *NeoRowsMock) All() ([][]interface{}, map[string]interface{}, error) {
+	if mock.AllFunc == nil {
+		panic("moq: NeoRowsMock.AllFunc is nil but NeoRows.All was just called")
+	}
+	callInfo := struct {
+	}{}
+	lockNeoRowsMockAll.Lock()
+	mock.calls.All = append(mock.calls.All, callInfo)
+	lockNeoRowsMockAll.Unlock()
+	return mock.AllFunc()
+}
+
+// AllCalls gets all the calls that were made to All.
+// Check the length with:
+//     len(mockedNeoRows.AllCalls())
+func (mock *NeoRowsMock) AllCalls() []struct {
+} {
+	var calls []struct {
+	}
+	lockNeoRowsMockAll.RLock()
+	calls = mock.calls.All
+	lockNeoRowsMockAll.RUnlock()
+	return calls
+}
+
+// Close calls CloseFunc.
+func (mock *NeoRowsMock) Close() error {
+	if mock.CloseFunc == nil {
+		panic("moq: NeoRowsMock.CloseFunc is nil but NeoRows.Close was just called")
+	}
+	callInfo := struct {
+	}{}
+	lockNeoRowsMockClose.Lock()
+	mock.calls.Close = append(mock.calls.Close, callInfo)
+	lockNeoRowsMockClose.Unlock()
+	return mock.CloseFunc()
+}
+
+// CloseCalls gets all the calls that were made to Close.
+// Check the length with:
+//     len(mockedNeoRows.CloseCalls())
+func (mock *NeoRowsMock) CloseCalls() []struct {
+} {
+	var calls []struct {
+	}
+	lockNeoRowsMockClose.RLock()
+	calls = mock.calls.Close
+	lockNeoRowsMockClose.RUnlock()
+	return calls
+}
+
+// Columns calls ColumnsFunc.
+func (mock *NeoRowsMock) Columns() []string {
+	if mock.ColumnsFunc == nil {
+		panic("moq: NeoRowsMock.ColumnsFunc is nil but NeoRows.Columns was just called")
+	}
+	callInfo := struct {
+	}{}
+	lockNeoRowsMockColumns.Lock()
+	mock.calls.Columns = append(mock.calls.Columns, callInfo)
+	lockNeoRowsMockColumns.Unlock()
+	return mock.ColumnsFunc()
+}
+
+// ColumnsCalls gets all the calls that were made to Columns.
+// Check the length with:
+//     len(mockedNeoRows.ColumnsCalls())
+func (mock *NeoRowsMock) ColumnsCalls() []struct {
+} {
+	var calls []struct {
+	}
+	lockNeoRowsMockColumns.RLock()
+	calls = mock.calls.Columns
+	lockNeoRowsMockColumns.RUnlock()
+	return calls
+}
+
+// Metadata calls MetadataFunc.
+func (mock *NeoRowsMock) Metadata() map[string]interface{} {
+	if mock.MetadataFunc == nil {
+		panic("moq: NeoRowsMock.MetadataFunc is nil but NeoRows.Metadata was just called")
+	}
+	callInfo := struct {
+	}{}
+	lockNeoRowsMockMetadata.Lock()
+	mock.calls.Metadata = append(mock.calls.Metadata, callInfo)
+	lockNeoRowsMockMetadata.Unlock()
+	return mock.MetadataFunc()
+}
+
+// MetadataCalls gets all the calls that were made to Metadata.
+// Check the length with:
+//     len(mockedNeoRows.MetadataCalls())
+func (mock *NeoRowsMock) MetadataCalls() []struct {
+} {
+	var calls []struct {
+	}
+	lockNeoRowsMockMetadata.RLock()
+	calls = mock.calls.Metadata
+	lockNeoRowsMockMetadata.RUnlock()
+	return calls
+}
+
+// NextNeo calls NextNeoFunc.
+func (mock *NeoRowsMock) NextNeo() ([]interface{}, map[string]interface{}, error) {
+	if mock.NextNeoFunc == nil {
+		panic("moq: NeoRowsMock.NextNeoFunc is nil but NeoRows.NextNeo was just called")
+	}
+	callInfo := struct {
+	}{}
+	lockNeoRowsMockNextNeo.Lock()
+	mock.calls.NextNeo = append(mock.calls.NextNeo, callInfo)
+	lockNeoRowsMockNextNeo.Unlock()
+	return mock.NextNeoFunc()
+}
+
+// NextNeoCalls gets all the calls that were made to NextNeo.
+// Check the length with:
+//     len(mockedNeoRows.NextNeoCalls())
+func (mock *NeoRowsMock) NextNeoCalls() []struct {
+} {
+	var calls []struct {
+	}
+	lockNeoRowsMockNextNeo.RLock()
+	calls = mock.calls.NextNeo
+	lockNeoRowsMockNextNeo.RUnlock()
+	return calls
+}
