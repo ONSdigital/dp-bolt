@@ -20,6 +20,12 @@ var (
 	expectedMeta = map[string]interface{}{"key": "value"}
 )
 
+type queryParams struct {
+	data  []interface{}
+	meta  map[string]interface{}
+	index int
+}
+
 type ResultExtractorMock struct {
 	Calls             []Result
 	ExtractResultFunc ResultExtractor
