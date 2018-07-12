@@ -12,7 +12,6 @@ type QueryForResultFunc func(query string, params map[string]interface{}, result
 type DB struct {
 	QueryForResultCalls  []QueryParams
 	QueryForResultFuncs  []QueryForResultFunc
-	ResultExtractorInput []*bolt.Result
 	CloseFunc            func() error
 }
 
@@ -23,7 +22,6 @@ func (m *DB) QueryForResult(query string, params map[string]interface{}, resultE
 
 	index := len(m.QueryForResultCalls)
 	m.QueryForResultCalls = append(m.QueryForResultCalls, newQueryParams(query, params))
-
 	return m.QueryForResultFuncs[index](query, params, resultExtractor)
 }
 
