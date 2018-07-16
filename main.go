@@ -35,13 +35,14 @@ func main() {
 		return nil
 	}
 
-	err = db.QueryForResult(query, nil, rowExtractor)
+	var numResults int
+	numResults, err = db.QueryForResult(query, nil, rowExtractor)
 	if err != nil {
 		log.Fatal(err)
 		os.Exit(1)
 	}
 
-	if count != 1 {
+	if count != 1 && numResults != 1 {
 		log.Fatal(errors.New("count in correct expected 1 but was " + strconv.FormatInt(count, 10)))
 		os.Exit(1)
 	}

@@ -26,14 +26,14 @@ type queryParams struct {
 	index int
 }
 
-type ResultExtractorMock struct {
-	Calls             []Result
-	ExtractResultFunc ResultExtractor
+type ResultMapperMock struct {
+	Calls         []Result
+	MapResultFunc ResultMapper
 }
 
-func (m *ResultExtractorMock) ExtractResult(r *Result) error {
+func (m *ResultMapperMock) Do(r *Result) error {
 	m.Calls = append(m.Calls, *r)
-	return m.ExtractResultFunc(r)
+	return m.MapResultFunc(r)
 }
 
 func TestDB_Close(t *testing.T) {
@@ -60,20 +60,21 @@ func TestDB_QueryForResultOpenConnErr(t *testing.T) {
 		db := New(pool)
 
 		Convey("when QueryForResult is called", func() {
-			mockExtractor := ResultExtractorMock{
+			rowMapper := ResultMapperMock{
 				Calls: []Result{},
-				ExtractResultFunc: func(r *Result) error {
+				MapResultFunc: func(r *Result) error {
 					return nil
 				},
 			}
 
-			err := db.QueryForResult("", nil, mockExtractor.ExtractResult)
+			count, err := db.QueryForResult("", nil, rowMapper.Do)
 
-			Convey("then an error is returned", func() {
+			Convey("then an error is returned and result count is 0", func() {
 				So(err, ShouldNotBeNil)
+				So(count, ShouldEqual, 0)
 				So(err.Error(), ShouldResemble, errors.WithMessage(errTest, "error opening neo4j connection").Error())
 				So(pool.OpenPoolCalls(), ShouldHaveLength, 1)
-				So(mockExtractor.Calls, ShouldHaveLength, 0)
+				So(rowMapper.Calls, ShouldHaveLength, 0)
 			})
 		})
 	})
@@ -95,24 +96,25 @@ func TestDB_QueryForResult_QueryNeoError(t *testing.T) {
 		db := New(pool)
 
 		Convey("when QueryForResult is called", func() {
-			mockExtractor := ResultExtractorMock{
+			resultMappper := ResultMapperMock{
 				Calls: []Result{},
-				ExtractResultFunc: func(r *Result) error {
+				MapResultFunc: func(r *Result) error {
 					return nil
 				},
 			}
 
-			err := db.QueryForResult("", nil, mockExtractor.ExtractResult)
+			count, err := db.QueryForResult("", nil, resultMappper.Do)
 
 			Convey("then an error is returned and the connection is closed", func() {
 				So(err, ShouldNotBeNil)
+				So(count, ShouldEqual, 0)
 				So(err.Error(), ShouldResemble, errors.WithMessage(errTest, "error executing neo4j query").Error())
 				So(pool.OpenPoolCalls(), ShouldHaveLength, 1)
 				So(conn.QueryNeoCalls(), ShouldHaveLength, 1)
 				So(conn.QueryNeoCalls()[0].Query, ShouldEqual, "")
 				So(conn.QueryNeoCalls()[0].Params, ShouldEqual, nil)
 				So(conn.CloseCalls(), ShouldHaveLength, 1)
-				So(mockExtractor.Calls, ShouldHaveLength, 0)
+				So(resultMappper.Calls, ShouldHaveLength, 0)
 			})
 		})
 	})
@@ -142,14 +144,14 @@ func TestDB_QueryForResult_NextNeoError(t *testing.T) {
 		db := New(pool)
 
 		Convey("when QueryForResult is called", func() {
-			mockExtractor := ResultExtractorMock{
+			resultMapper := ResultMapperMock{
 				Calls: []Result{},
-				ExtractResultFunc: func(r *Result) error {
+				MapResultFunc: func(r *Result) error {
 					return nil
 				},
 			}
 
-			err := db.QueryForResult("", nil, mockExtractor.ExtractResult)
+			_, err := db.QueryForResult("", nil, resultMapper.Do)
 
 			Convey("then an error is returned and the connection and rows are closed", func() {
 				So(err, ShouldNotBeNil)
@@ -164,7 +166,7 @@ func TestDB_QueryForResult_NextNeoError(t *testing.T) {
 				So(rows.NextNeoCalls(), ShouldHaveLength, 1)
 				So(rows.CloseCalls(), ShouldHaveLength, 1)
 
-				So(mockExtractor.Calls, ShouldHaveLength, 0)
+				So(resultMapper.Calls, ShouldHaveLength, 0)
 			})
 		})
 	})
@@ -208,17 +210,18 @@ func TestDB_QueryForResult_MoreThanOneResult(t *testing.T) {
 		db := New(pool)
 
 		Convey("when QueryForResult is called", func() {
-			mockExtractor := ResultExtractorMock{
+			resultMapper := ResultMapperMock{
 				Calls: []Result{},
-				ExtractResultFunc: func(r *Result) error {
+				MapResultFunc: func(r *Result) error {
 					return nil
 				},
 			}
 
-			err := db.QueryForResult("", nil, mockExtractor.ExtractResult)
+			count, err := db.QueryForResult("", nil, resultMapper.Do)
 
 			Convey("then an error is returned and the connection and rows are closed", func() {
 				So(err, ShouldNotBeNil)
+				So(count, ShouldEqual, 2)
 				So(err.Error(), ShouldResemble, NonUniqueResult.Error())
 				So(pool.OpenPoolCalls(), ShouldHaveLength, 1)
 
@@ -230,16 +233,16 @@ func TestDB_QueryForResult_MoreThanOneResult(t *testing.T) {
 				So(rows.NextNeoCalls(), ShouldHaveLength, 2)
 				So(rows.CloseCalls(), ShouldHaveLength, 1)
 
-				So(mockExtractor.Calls, ShouldHaveLength, 1)
-				So(mockExtractor.Calls[0].Data, ShouldResemble, expectedData)
-				So(mockExtractor.Calls[0].Meta, ShouldResemble, expectedMeta)
+				So(resultMapper.Calls, ShouldHaveLength, 1)
+				So(resultMapper.Calls[0].Data, ShouldResemble, expectedData)
+				So(resultMapper.Calls[0].Meta, ShouldResemble, expectedMeta)
 			})
 		})
 	})
 }
 
 func TestDB_QueryForResult_ExtractResultError(t *testing.T) {
-	Convey("given ResultExtractor returns an error", t, func() {
+	Convey("given ResultMapper returns an error", t, func() {
 		expectedData := []interface{}{int64(1)}
 		expectedMeta := map[string]interface{}{"key": "value"}
 
@@ -280,18 +283,19 @@ func TestDB_QueryForResult_ExtractResultError(t *testing.T) {
 
 		Convey("when QueryForResult is called", func() {
 
-			mockExtractor := ResultExtractorMock{
+			resultMapper := ResultMapperMock{
 				Calls: []Result{},
-				ExtractResultFunc: func(r *Result) error {
+				MapResultFunc: func(r *Result) error {
 					return errTest
 				},
 			}
 
-			err := db.QueryForResult("", nil, mockExtractor.ExtractResult)
+			count, err := db.QueryForResult("", nil, resultMapper.Do)
 
 			Convey("then an error is returned and the connection and rows are closed", func() {
 				So(err, ShouldNotBeNil)
-				So(err.Error(), ShouldResemble, errors.WithMessage(errTest, "extractResults: extractResult returned an error").Error())
+				So(count, ShouldEqual, 0)
+				So(err.Error(), ShouldResemble, errors.WithMessage(errTest, "mapResult returned an error").Error())
 				So(pool.OpenPoolCalls(), ShouldHaveLength, 1)
 
 				So(conn.QueryNeoCalls(), ShouldHaveLength, 1)
@@ -302,10 +306,10 @@ func TestDB_QueryForResult_ExtractResultError(t *testing.T) {
 				So(rows.NextNeoCalls(), ShouldHaveLength, 1)
 				So(rows.CloseCalls(), ShouldHaveLength, 1)
 
-				So(mockExtractor.Calls, ShouldHaveLength, 1)
-				So(mockExtractor.Calls[0].Data, ShouldResemble, expectedData)
-				So(mockExtractor.Calls[0].Meta, ShouldResemble, expectedMeta)
-				So(mockExtractor.Calls[0].Index, ShouldEqual, 0)
+				So(resultMapper.Calls, ShouldHaveLength, 1)
+				So(resultMapper.Calls[0].Data, ShouldResemble, expectedData)
+				So(resultMapper.Calls[0].Meta, ShouldResemble, expectedMeta)
+				So(resultMapper.Calls[0].Index, ShouldEqual, 0)
 			})
 		})
 	})
@@ -353,17 +357,18 @@ func TestDB_QueryForResult_Success(t *testing.T) {
 
 		Convey("when QueryForResult is called", func() {
 
-			mockExtractor := ResultExtractorMock{
+			resultMapper := ResultMapperMock{
 				Calls: []Result{},
-				ExtractResultFunc: func(r *Result) error {
+				MapResultFunc: func(r *Result) error {
 					return nil
 				},
 			}
 
-			err := db.QueryForResult("", nil, mockExtractor.ExtractResult)
+			count, err := db.QueryForResult("", nil, resultMapper.Do)
 
 			Convey("then no error is returned and the connection and rows are closed", func() {
 				So(err, ShouldBeNil)
+				So(count, ShouldEqual, 1)
 				So(pool.OpenPoolCalls(), ShouldHaveLength, 1)
 
 				So(conn.QueryNeoCalls(), ShouldHaveLength, 1)
@@ -374,12 +379,11 @@ func TestDB_QueryForResult_Success(t *testing.T) {
 				So(rows.NextNeoCalls(), ShouldHaveLength, 2)
 				So(rows.CloseCalls(), ShouldHaveLength, 1)
 
-				So(mockExtractor.Calls, ShouldHaveLength, 1)
-				So(mockExtractor.Calls[0].Data, ShouldResemble, expectedData)
-				So(mockExtractor.Calls[0].Meta, ShouldResemble, expectedMeta)
-				So(mockExtractor.Calls[0].Index, ShouldEqual, 0)
+				So(resultMapper.Calls, ShouldHaveLength, 1)
+				So(resultMapper.Calls[0].Data, ShouldResemble, expectedData)
+				So(resultMapper.Calls[0].Meta, ShouldResemble, expectedMeta)
+				So(resultMapper.Calls[0].Index, ShouldEqual, 0)
 			})
 		})
 	})
 }
-

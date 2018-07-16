@@ -16,7 +16,7 @@ type Result struct {
 	Index int
 }
 
-type ResultExtractor func(r *Result) error
+type ResultMapper func(r *Result) error
 
 type NeoConn neo4j.Conn
 type NeoRows neo4j.Rows
@@ -43,45 +43,50 @@ func (d *DB) Close() error {
 }
 
 //QueryForResults executes the provided query to return 1 or more results.
-func (d *DB) QueryForResults(query string, params map[string]interface{}, resultExtractor ResultExtractor) error {
-	return d.query(query, params, resultExtractor, false)
+func (d *DB) QueryForResults(query string, params map[string]interface{}, mapResult ResultMapper) (int, error) {
+	return d.query(query, params, mapResult, false)
 }
 
 //QueryForResults executes the provided query to return a single result.
-func (d *DB) QueryForResult(query string, params map[string]interface{}, resultExtractor ResultExtractor) error {
-	return d.query(query, params, resultExtractor, true)
+func (d *DB) QueryForResult(query string, params map[string]interface{}, mapResult ResultMapper) (int, error) {
+	return d.query(query, params, mapResult, true)
 }
 
-func (d *DB) query(cypherQuery string, params map[string]interface{}, extractResult ResultExtractor, singleResult bool) error {
+func (d *DB) query(cypherQuery string, params map[string]interface{}, mapResult ResultMapper, singleResult bool) (int, error) {
 	conn, err := d.pool.OpenPool()
 	if err != nil {
-		return errors.WithMessage(err, "error opening neo4j connection")
+		return 0, errors.WithMessage(err, "error opening neo4j connection")
 	}
 	defer conn.Close()
 
 	rows, err := conn.QueryNeo(cypherQuery, params)
 	if err != nil {
-		return errors.WithMessage(err, "error executing neo4j query")
+		return 0, errors.WithMessage(err, "error executing neo4j query")
 	}
 	defer rows.Close()
 
 	index := 0
+	numOfResults := 0
 	for {
 		data, meta, nextNeoErr := rows.NextNeo()
 		if nextNeoErr != nil {
 			if nextNeoErr == io.EOF {
-				return nil
+				return numOfResults, nil
 			} else {
-				return errors.WithMessage(nextNeoErr, "extractResults: rows.NextNeo() return unexpected error")
+				return 0, errors.WithMessage(nextNeoErr, "extractResults: rows.NextNeo() return unexpected error")
 			}
 		}
+		numOfResults++
 		if singleResult && index > 0 {
-			return NonUniqueResult
+			return numOfResults, NonUniqueResult
 		}
-		if err := extractResult(&Result{Data: data, Meta: meta, Index: index}); err != nil {
-			return errors.WithMessage(err, "extractResults: extractResult returned an error")
+
+		if mapResult != nil {
+			if err := mapResult(&Result{Data: data, Meta: meta, Index: index}); err != nil {
+				return 0, errors.WithMessage(err, "mapResult returned an error")
+			}
 		}
 		index++
 	}
-	return nil
+	return numOfResults, nil
 }
