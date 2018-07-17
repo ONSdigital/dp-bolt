@@ -36,7 +36,7 @@ func main() {
 	}
 
 	var numResults int
-	numResults, err = db.QueryForResult(query, nil, rowExtractor)
+	err = db.QueryForResult(query, nil, rowExtractor)
 	if err != nil {
 		log.Fatal(err)
 		os.Exit(1)

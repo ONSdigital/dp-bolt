@@ -67,11 +67,10 @@ func TestDB_QueryForResultOpenConnErr(t *testing.T) {
 				},
 			}
 
-			count, err := db.QueryForResult("", nil, rowMapper.Do)
+			err := db.QueryForResult("", nil, rowMapper.Do)
 
 			Convey("then an error is returned and result count is 0", func() {
 				So(err, ShouldNotBeNil)
-				So(count, ShouldEqual, 0)
 				So(err.Error(), ShouldResemble, errors.WithMessage(errTest, "error opening neo4j connection").Error())
 				So(pool.OpenPoolCalls(), ShouldHaveLength, 1)
 				So(rowMapper.Calls, ShouldHaveLength, 0)
@@ -103,11 +102,10 @@ func TestDB_QueryForResult_QueryNeoError(t *testing.T) {
 				},
 			}
 
-			count, err := db.QueryForResult("", nil, resultMappper.Do)
+			err := db.QueryForResult("", nil, resultMappper.Do)
 
 			Convey("then an error is returned and the connection is closed", func() {
 				So(err, ShouldNotBeNil)
-				So(count, ShouldEqual, 0)
 				So(err.Error(), ShouldResemble, errors.WithMessage(errTest, "error executing neo4j query").Error())
 				So(pool.OpenPoolCalls(), ShouldHaveLength, 1)
 				So(conn.QueryNeoCalls(), ShouldHaveLength, 1)
@@ -151,7 +149,7 @@ func TestDB_QueryForResult_NextNeoError(t *testing.T) {
 				},
 			}
 
-			_, err := db.QueryForResult("", nil, resultMapper.Do)
+			err := db.QueryForResult("", nil, resultMapper.Do)
 
 			Convey("then an error is returned and the connection and rows are closed", func() {
 				So(err, ShouldNotBeNil)
@@ -217,11 +215,10 @@ func TestDB_QueryForResult_MoreThanOneResult(t *testing.T) {
 				},
 			}
 
-			count, err := db.QueryForResult("", nil, resultMapper.Do)
+			err := db.QueryForResult("", nil, resultMapper.Do)
 
 			Convey("then an error is returned and the connection and rows are closed", func() {
 				So(err, ShouldNotBeNil)
-				So(count, ShouldEqual, 2)
 				So(err.Error(), ShouldResemble, NonUniqueResult.Error())
 				So(pool.OpenPoolCalls(), ShouldHaveLength, 1)
 
@@ -290,11 +287,10 @@ func TestDB_QueryForResult_ExtractResultError(t *testing.T) {
 				},
 			}
 
-			count, err := db.QueryForResult("", nil, resultMapper.Do)
+			err := db.QueryForResult("", nil, resultMapper.Do)
 
 			Convey("then an error is returned and the connection and rows are closed", func() {
 				So(err, ShouldNotBeNil)
-				So(count, ShouldEqual, 0)
 				So(err.Error(), ShouldResemble, errors.WithMessage(errTest, "mapResult returned an error").Error())
 				So(pool.OpenPoolCalls(), ShouldHaveLength, 1)
 
@@ -364,11 +360,10 @@ func TestDB_QueryForResult_Success(t *testing.T) {
 				},
 			}
 
-			count, err := db.QueryForResult("", nil, resultMapper.Do)
+			err := db.QueryForResult("", nil, resultMapper.Do)
 
 			Convey("then no error is returned and the connection and rows are closed", func() {
 				So(err, ShouldBeNil)
-				So(count, ShouldEqual, 1)
 				So(pool.OpenPoolCalls(), ShouldHaveLength, 1)
 
 				So(conn.QueryNeoCalls(), ShouldHaveLength, 1)
@@ -383,6 +378,64 @@ func TestDB_QueryForResult_Success(t *testing.T) {
 				So(resultMapper.Calls[0].Data, ShouldResemble, expectedData)
 				So(resultMapper.Calls[0].Meta, ShouldResemble, expectedMeta)
 				So(resultMapper.Calls[0].Index, ShouldEqual, 0)
+			})
+		})
+	})
+}
+
+func TestDB_QueryForResult_NoResults(t *testing.T) {
+	Convey("given a no results are returned", t, func() {
+		rowsStubs := &mock.RowsStub{
+			Rows: []mock.RowValues{
+				{
+					Data: nil,
+					Meta: nil,
+					Err:  io.EOF,
+				},
+			},
+		}
+
+		rows := &mock.NeoRowsMock{
+			NextNeoFunc: func() ([]interface{}, map[string]interface{}, error) {
+				return rowsStubs.Next()
+			},
+			CloseFunc: closeNoErr,
+		}
+
+		conn := &mock.NeoConnMock{
+			QueryNeoFunc: func(query string, params map[string]interface{}) (golangNeo4jBoltDriver.Rows, error) {
+				return rows, nil
+			},
+			CloseFunc: closeNoErr,
+		}
+		pool := &mock.DBPoolMock{
+			OpenPoolFunc: func() (golangNeo4jBoltDriver.Conn, error) {
+				return conn, nil
+			},
+		}
+		db := New(pool)
+
+		Convey("when QueryForResult is called", func() {
+
+			resultMapper := ResultMapperMock{
+				Calls: []Result{},
+			}
+
+			err := db.QueryForResult("", nil, resultMapper.Do)
+
+			Convey("then no results error is returned", func() {
+				So(err, ShouldEqual, ErrNoResults)
+				So(pool.OpenPoolCalls(), ShouldHaveLength, 1)
+
+				So(conn.QueryNeoCalls(), ShouldHaveLength, 1)
+				So(conn.QueryNeoCalls()[0].Query, ShouldEqual, "")
+				So(conn.QueryNeoCalls()[0].Params, ShouldEqual, nil)
+				So(conn.CloseCalls(), ShouldHaveLength, 1)
+
+				So(rows.NextNeoCalls(), ShouldHaveLength, 1)
+				So(rows.CloseCalls(), ShouldHaveLength, 1)
+
+				So(resultMapper.Calls, ShouldHaveLength, 0)
 			})
 		})
 	})
