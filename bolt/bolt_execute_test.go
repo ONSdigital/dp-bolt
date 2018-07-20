@@ -12,7 +12,7 @@ var (
 	Err  = errors.New("error")
 	stmt = Stmt{
 		Query:  "123",
-		Params: map[string]interface{}{"key": "value"},
+		Params: Params{"key": "value"},
 	}
 )
 
@@ -51,7 +51,7 @@ func TestDB_ExecSuccess(t *testing.T) {
 		So(pool.OpenPoolCalls(), ShouldHaveLength, 1)
 		So(conn.ExecNeoCalls(), ShouldHaveLength, 1)
 		So(conn.ExecNeoCalls()[0].Query, ShouldEqual, stmt.Query)
-		So(conn.ExecNeoCalls()[0].Params, ShouldResemble, stmt.Params)
+		So(conn.ExecNeoCalls()[0].Params, ShouldResemble, map[string]interface{}{"key": "value"})
 		So(rowsAffected, ShouldEqual, int64(1))
 		So(meta, ShouldResemble, map[string]interface{}{"key": "value"})
 		So(err, ShouldBeNil)
@@ -143,7 +143,7 @@ func TestDB_ExecExecNeoError(t *testing.T) {
 		So(pool.OpenPoolCalls(), ShouldHaveLength, 1)
 		So(conn.ExecNeoCalls(), ShouldHaveLength, 1)
 		So(conn.ExecNeoCalls()[0].Query, ShouldEqual, stmt.Query)
-		So(conn.ExecNeoCalls()[0].Params, ShouldResemble, stmt.Params)
+		So(conn.ExecNeoCalls()[0].Params, ShouldResemble, map[string]interface{}{"key": "value"})
 		So(rowsAffected, ShouldEqual, int64(0))
 		So(meta, ShouldBeNil)
 		So(err, ShouldResemble, errors.WithMessage(Err, "error executing statement"))
@@ -185,7 +185,7 @@ func TestDB_ExecResultRowsAffectedError(t *testing.T) {
 		So(pool.OpenPoolCalls(), ShouldHaveLength, 1)
 		So(conn.ExecNeoCalls(), ShouldHaveLength, 1)
 		So(conn.ExecNeoCalls()[0].Query, ShouldEqual, stmt.Query)
-		So(conn.ExecNeoCalls()[0].Params, ShouldResemble, stmt.Params)
+		So(conn.ExecNeoCalls()[0].Params, ShouldResemble, map[string]interface{}{"key": "value"})
 		So(rowsAffected, ShouldEqual, int64(0))
 		So(meta, ShouldBeNil)
 		So(err, ShouldResemble, errors.WithMessage(Err, "error getting rows affected count from result"))

@@ -60,4 +60,26 @@ if err != nil {
 // do something with count ...
 ```
 
+### Execute insert/update statement
+
+```go
+pool, err := neo4j.NewClosableDriverPool("$bolt_url$", 1)
+if err != nil {
+    //handle error
+}
+db := bolt.New(pool)
+defer db.Close()
+
+stmt := bolt.Stmt{
+    Query: "MATCH (x:_guitar_brand {edition: {edition}, label: {old_label}}) SET x.label = {new_label}",
+    Params: bolt.Params{"edition": "2018", "old_label": "fender", "new_label": "Fender"},
+}
+
+rowsAffected, meta, err := db.Exec(stmt)
+if err != nil {
+    // handle error
+}
+// do something with result ...
+```
+
 

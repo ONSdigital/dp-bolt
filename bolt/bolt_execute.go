@@ -2,9 +2,12 @@ package bolt
 
 import "github.com/pkg/errors"
 
+type Params map[string]interface{}
+
+
 type Stmt struct {
 	Query  string
-	Params map[string]interface{}
+	Params Params
 }
 
 func (d *DB) Exec(s Stmt) (int64, map[string]interface{}, error) {
