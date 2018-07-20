@@ -2,42 +2,30 @@ package bolt
 
 import "github.com/pkg/errors"
 
-type Update struct {
-	RowsAffected int64
-	LastInsertId int64
-	Metadata     map[string]interface{}
-}
-
 type Stmt struct {
 	Query  string
 	Params map[string]interface{}
 }
 
-func (d *DB) Exec(s Stmt) (*Update, error) {
+func (d *DB) Exec(s Stmt) (int64, map[string]interface{}, error) {
+	if s.Query == "" {
+		return 0, nil, nil
+	}
+
 	conn, err := d.pool.OpenPool()
 	if err != nil {
-		return nil, errors.WithMessage(err, "error opening neo4j connection")
+		return 0, nil, errors.WithMessage(err, "error opening neo4j connection")
 	}
 	defer conn.Close()
 
-	stmt, err := conn.PrepareNeo(s.Query)
+	res, err := conn.ExecNeo(s.Query, s.Params)
 	if err != nil {
-		return nil, errors.WithMessage(err, "error creating no4j statement")
-	}
-	defer stmt.Close()
-
-	res, err := stmt.ExecNeo(s.Params)
-	if err != nil {
-		return nil, errors.WithMessage(err, "error executing statement")
+		return 0, nil, errors.WithMessage(err, "error executing statement")
 	}
 
-	rowsAffected, _ := res.RowsAffected()
-	lastInsertID, _ := res.LastInsertId()
-	meta := res.Metadata()
-
-	return &Update{
-		RowsAffected: rowsAffected,
-		LastInsertId: lastInsertID,
-		Metadata:     meta,
-	}, nil
+	rowsAffected, err := res.RowsAffected()
+	if err != nil {
+		return 0, nil, errors.WithMessage(err, "error getting rows affected count from result")
+	}
+	return rowsAffected, res.Metadata(), nil
 }

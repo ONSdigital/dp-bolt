@@ -813,3 +813,132 @@ func (mock *NeoRowsMock) NextNeoCalls() []struct {
 	lockNeoRowsMockNextNeo.RUnlock()
 	return calls
 }
+
+var (
+	lockNeoResultMockLastInsertId sync.RWMutex
+	lockNeoResultMockMetadata     sync.RWMutex
+	lockNeoResultMockRowsAffected sync.RWMutex
+)
+
+// NeoResultMock is a mock implementation of NeoResult.
+//
+//     func TestSomethingThatUsesNeoResult(t *testing.T) {
+//
+//         // make and configure a mocked NeoResult
+//         mockedNeoResult := &NeoResultMock{
+//             LastInsertIdFunc: func() (int64, error) {
+// 	               panic("TODO: mock out the LastInsertId method")
+//             },
+//             MetadataFunc: func() map[string]interface{} {
+// 	               panic("TODO: mock out the Metadata method")
+//             },
+//             RowsAffectedFunc: func() (int64, error) {
+// 	               panic("TODO: mock out the RowsAffected method")
+//             },
+//         }
+//
+//         // TODO: use mockedNeoResult in code that requires NeoResult
+//         //       and then make assertions.
+//
+//     }
+type NeoResultMock struct {
+	// LastInsertIdFunc mocks the LastInsertId method.
+	LastInsertIdFunc func() (int64, error)
+
+	// MetadataFunc mocks the Metadata method.
+	MetadataFunc func() map[string]interface{}
+
+	// RowsAffectedFunc mocks the RowsAffected method.
+	RowsAffectedFunc func() (int64, error)
+
+	// calls tracks calls to the methods.
+	calls struct {
+		// LastInsertId holds details about calls to the LastInsertId method.
+		LastInsertId []struct {
+		}
+		// Metadata holds details about calls to the Metadata method.
+		Metadata []struct {
+		}
+		// RowsAffected holds details about calls to the RowsAffected method.
+		RowsAffected []struct {
+		}
+	}
+}
+
+// LastInsertId calls LastInsertIdFunc.
+func (mock *NeoResultMock) LastInsertId() (int64, error) {
+	if mock.LastInsertIdFunc == nil {
+		panic("moq: NeoResultMock.LastInsertIdFunc is nil but NeoResult.LastInsertId was just called")
+	}
+	callInfo := struct {
+	}{}
+	lockNeoResultMockLastInsertId.Lock()
+	mock.calls.LastInsertId = append(mock.calls.LastInsertId, callInfo)
+	lockNeoResultMockLastInsertId.Unlock()
+	return mock.LastInsertIdFunc()
+}
+
+// LastInsertIdCalls gets all the calls that were made to LastInsertId.
+// Check the length with:
+//     len(mockedNeoResult.LastInsertIdCalls())
+func (mock *NeoResultMock) LastInsertIdCalls() []struct {
+} {
+	var calls []struct {
+	}
+	lockNeoResultMockLastInsertId.RLock()
+	calls = mock.calls.LastInsertId
+	lockNeoResultMockLastInsertId.RUnlock()
+	return calls
+}
+
+// Metadata calls MetadataFunc.
+func (mock *NeoResultMock) Metadata() map[string]interface{} {
+	if mock.MetadataFunc == nil {
+		panic("moq: NeoResultMock.MetadataFunc is nil but NeoResult.Metadata was just called")
+	}
+	callInfo := struct {
+	}{}
+	lockNeoResultMockMetadata.Lock()
+	mock.calls.Metadata = append(mock.calls.Metadata, callInfo)
+	lockNeoResultMockMetadata.Unlock()
+	return mock.MetadataFunc()
+}
+
+// MetadataCalls gets all the calls that were made to Metadata.
+// Check the length with:
+//     len(mockedNeoResult.MetadataCalls())
+func (mock *NeoResultMock) MetadataCalls() []struct {
+} {
+	var calls []struct {
+	}
+	lockNeoResultMockMetadata.RLock()
+	calls = mock.calls.Metadata
+	lockNeoResultMockMetadata.RUnlock()
+	return calls
+}
+
+// RowsAffected calls RowsAffectedFunc.
+func (mock *NeoResultMock) RowsAffected() (int64, error) {
+	if mock.RowsAffectedFunc == nil {
+		panic("moq: NeoResultMock.RowsAffectedFunc is nil but NeoResult.RowsAffected was just called")
+	}
+	callInfo := struct {
+	}{}
+	lockNeoResultMockRowsAffected.Lock()
+	mock.calls.RowsAffected = append(mock.calls.RowsAffected, callInfo)
+	lockNeoResultMockRowsAffected.Unlock()
+	return mock.RowsAffectedFunc()
+}
+
+// RowsAffectedCalls gets all the calls that were made to RowsAffected.
+// Check the length with:
+//     len(mockedNeoResult.RowsAffectedCalls())
+func (mock *NeoResultMock) RowsAffectedCalls() []struct {
+} {
+	var calls []struct {
+	}
+	lockNeoResultMockRowsAffected.RLock()
+	calls = mock.calls.RowsAffected
+	lockNeoResultMockRowsAffected.RUnlock()
+	return calls
+}
